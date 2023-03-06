@@ -6,12 +6,12 @@ import numpy as np
 from pathlib import Path
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self):
+    def __init__(self, input_length: int = 10):
+        self.scaler = MinMaxScaler()
         self.dataframe = self.raw_dataset()
         # self.dataframe = pd.read_csv('time_series.csv')[['United States','China','France','Ukraine','Russia']]
-        self.scaler = MinMaxScaler()
 
-        self.input_length = 10
+        self.input_length = input_length
         self.X, self.y = self.generate_graph_seq2seq_io_data(self.dataframe)
 
     def raw_dataset(self):

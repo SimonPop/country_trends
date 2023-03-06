@@ -1,0 +1,25 @@
+model_config:
+  gcn_true: True
+  build_adj: True
+  gcn_depth: 2
+  num_nodes: 5
+  seq_length: 11
+  kernel_set: [1] 
+  kernel_size: 1 
+  dropout: 0.3 
+  subgraph_size: 2  # Warning: need to be lower than num_nodes
+  node_dim: 40 
+  dilation_exponential: 1 
+  conv_channels: 32
+  residual_channels: 32 
+  skip_channels: 64
+  end_channels: 128 
+  in_dim: 1 # Number of features per node (1 in our case) 
+  out_dim: 9 #Correspond to the seq length in y
+  layers: 3 
+  propalpha: 0.05 
+  tanhalpha: 3
+  layer_norm_affline: True
+epochs: 10
+momentum: 0.9
+lr: 0.001
