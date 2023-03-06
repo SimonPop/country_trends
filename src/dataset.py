@@ -4,13 +4,24 @@ from pytrends.request import TrendReq
 from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 from pathlib import Path
+import os
+from tqdm import tqdm
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, input_length: int = 10):
-        self.scaler = MinMaxScaler()
-        self.dataframe = self.raw_dataset()
-        # self.dataframe = pd.read_csv('time_series.csv')[['United States','China','France','Ukraine','Russia']]
+    def __init__(self, input_length: int = 10, countries = None):
+        DATA_PATH = Path(__file__).parent.parent / 'time_series.csv'
+        if os.path.exists(DATA_PATH):
+            self.dataframe = pd.read_csv(DATA_PATH, parse_dates=['date']).set_index('date')
+        else:
+            self.dataframe = self.raw_dataset()
+            self.dataframe.to_csv(DATA_PATH)
 
+        self.scaler = MinMaxScaler()
+        # self.dataframe = self.dataframe.pct_change().drop("2018-03-11").dropna(axis=1).replace(np.inf, np.nan).replace(-np.inf, np.nan).dropna(axis=0)
+        if not countries is None:
+            self.dataframe = self.dataframe[countries]
+        self.dataframe[self.dataframe.columns] = self.scaler.fit_transform(self.dataframe)
+        
         self.input_length = input_length
         self.X, self.y = self.generate_graph_seq2seq_io_data(self.dataframe)
 
@@ -18,13 +29,14 @@ class Dataset(torch.utils.data.Dataset):
         pytrends = TrendReq(hl='en-US', tz=360)
         country_df = pd.read_csv(Path(__file__).parent.parent / 'country.csv', delimiter='\t')
 
-        # TODO: countries 
-        countries = ["United States", "China", "France", "Ukraine", "Russia"] # country_df['name'].sample(5).to_list()
-        pytrends.build_payload(countries, cat=0, timeframe='today 5-y', geo='US', gprop='')
+        dfs=[]
+        for i in tqdm(range(0, len(country_df)-5, 5)):
+            countries = country_df.iloc[i:min(len(country_df)-1, i+5)]['name'].to_list()
+            pytrends.build_payload(countries, cat=0, timeframe='today 5-y', geo='US', gprop='')
+            df = pytrends.interest_over_time()[countries]
+            dfs.append(df)
 
-        df = pytrends.interest_over_time()[countries]
-        df[countries] = self.scaler.fit_transform(df)
-
+        df = pd.concat(dfs, axis=1)
         return df
 
     def __len__(self):

@@ -31,6 +31,7 @@ class Config(BaseModel):
     epochs: int
     momentum: float
     lr: float
+    countries: List[str] = None
 
 with open(Path(__file__).parent / "config.yaml") as f:
         CONFIG = Config(**yaml.safe_load(f))

@@ -5,14 +5,18 @@ from torch.utils.data import DataLoader
 import torch.optim as optim
 from tqdm import tqdm
 from config import CONFIG
+from pathlib import Path
 
 if __name__ == "__main__":
 
-    dataset = Dataset(CONFIG.model_config.seq_length - 1)
+    dataset = Dataset(CONFIG.model_config.seq_length - 1, countries=CONFIG.countries)
     loader = DataLoader(dataset, batch_size=8)
 
+    model_config = CONFIG.model_config
+    model_config.num_nodes = len(dataset.dataframe.columns)
+
     model = MTGNN(
-            **CONFIG.model_config.dict()
+            **model_config.dict()
         )
 
     criterion = torch.nn.L1Loss()
@@ -32,3 +36,6 @@ if __name__ == "__main__":
             if i % 2000 == 1999:    # print every 2000 mini-batches
                 print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 2000:.3f}')
                 running_loss = 0.0
+
+    PATH = Path(__file__).parent.parent / "artifacts" / "model.pt"
+    torch.save(model.state_dict(), PATH)
