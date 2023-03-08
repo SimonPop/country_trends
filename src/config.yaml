@@ -3,24 +3,24 @@ model_config:
   build_adj: True
   num_nodes: 143 
   seq_length: 11
-  kernel_set: [2, 3, 6, 7] 
-  kernel_size: 7
+  kernel_set: [2, 3] 
+  kernel_size: 3
   gcn_depth: 2
-  dropout: 0.3 
+  dropout: 0.99
   subgraph_size: 2  # Warning: need to be lower than num_nodes, number of neighbors in the generated Adj matrix.
   node_dim: 4 
-  dilation_exponential: 1 
-  conv_channels: 8
-  residual_channels: 8
-  skip_channels: 8
-  end_channels: 8
+  dilation_exponential: 2
+  conv_channels: 2
+  residual_channels: 2
+  skip_channels: 2
+  end_channels: 2
   in_dim: 1 # Number of features per node (1 in our case) 
-  out_dim: 9 # Correspond to the seq length in y
-  layers: 2
+  out_dim: 2 # Correspond to the seq length in y
+  layers: 1
   propalpha: 0.05 
   tanhalpha: 3
   layer_norm_affline: True
-epochs: 50
+epochs: 10
 momentum: 0.9
 lr: 0.001
 countries:

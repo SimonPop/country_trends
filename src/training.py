@@ -9,8 +9,10 @@ from pathlib import Path
 
 if __name__ == "__main__":
 
-    dataset = WhaleDataset(CONFIG.model_config.seq_length - 1)
+    dataset = WhaleDataset(x_input_length=CONFIG.model_config.seq_length - 1, y_input_length=3)
     loader = DataLoader(dataset, batch_size=8)
+
+    A_tilde = dataset.A_pathway
 
     model_config = CONFIG.model_config
     model_config.num_nodes = len(dataset.dataframe.columns)
@@ -20,13 +22,14 @@ if __name__ == "__main__":
         )
     
     criterion = torch.nn.L1Loss()
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=CONFIG.momentum)
+    # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=CONFIG.momentum)
+    optimizer = optim.Adam(model.parameters())
     running_loss = 0
 
     for epoch in range(CONFIG.epochs):
         for i, (x, y) in enumerate(loader):
             optimizer.zero_grad()
-            outputs = model(x)
+            outputs = model(x, A_tilde=A_tilde)
 
             loss = criterion(outputs, y)
             loss.backward()
