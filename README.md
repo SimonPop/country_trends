@@ -27,7 +27,8 @@ The frequency of acquisition varies and averages around a point every 5 days.
 
 ### Data Processing
 
-Data from Google Trends is already pre-processed for taking values in a [0-100] interval.
+Data from Google Trends is already pre-processed for taking values in a [0-100] interval: 
+> Les résultats reflètent la proportion de recherches portant sur un mot clé donné dans une région et pour une période spécifiques, par rapport à la région où le taux d'utilisation de ce mot clé est le plus élevé (valeur de 100). Ainsi, une valeur de 50 signifie que le mot clé a été utilisé moitié moins souvent dans la région concernée, et une valeur de 0 signifie que les données pour ce mot clé sont insuffisantes.
 
 For our learning objective, we will add some more processing:
 
@@ -52,3 +53,9 @@ We will therefore use different methods to try and regularize our model:
 - Small `hidden dimensions`
 
 ## 📊 Results
+
+The model manages to learn the time series easily knowing that it has a very periodic behavior.
+
+However, the model's learned graph does not have to show cluster behavior to succeed since any time series does bring the same kind of information.
+
+![Whale Pathways](imgs/mtgnn_graph.png)
