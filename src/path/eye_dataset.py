@@ -6,7 +6,7 @@ import geopandas as gpd
 class EyeDataset(torch.utils.data.Dataset):
     def __init__(self, size: int = 10):
         self.size = size
-        self.eye = torch.eye(10).float()
+        self.eye = torch.eye(size).float()
 
     def __len__(self):
         return self.size - 1

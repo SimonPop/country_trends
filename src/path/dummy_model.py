@@ -1,55 +1,91 @@
 import torch
-from torch import optim, nn, utils, Tensor
+from torch import optim, nn
 from torch_geometric.nn import GraphConv
 import pytorch_lightning as pl
 from icecream import ic
 
 class DummyModel(pl.LightningModule):
-    def __init__(self, embedding_size: int, node_nb: int, neighbor_nb: int, input_size: int):
+    def __init__(self, embedding_size: int, num_nodes: int, neighbor_nb: int, input_size: int, gsl_mode: str = "matrix"):
         super().__init__()
         self.neighbor_nb = neighbor_nb
         self.embedding_size = embedding_size
-        self.node_nb = node_nb
+        self.num_nodes = num_nodes
 
-        self.node_embeddings = torch.nn.Embedding(node_nb, embedding_size)
+        self.gsl_mode = gsl_mode
+
+        self.node_embeddings_start = torch.nn.Embedding(num_nodes, embedding_size, sparse=False)
+        self.node_embeddings_target = torch.nn.Embedding(num_nodes, embedding_size, sparse=False)
         self.graph_layer = GraphConv(input_size, 1)
-        self.linear = nn.Linear(10, 10)
+        self._idx = torch.arange(self.num_nodes)
+        self._linear1 = nn.Linear(embedding_size, embedding_size)
+        self._linear2 = nn.Linear(embedding_size, embedding_size)
 
+        self.matrix = nn.Parameter(torch.randn(num_nodes, num_nodes), requires_grad=True)
+
+        self._alpha = 0.1
         self.softmax = nn.Softmax(dim=-1)
 
-    def graph_learning(self, node_embeddings: torch.tensor) -> torch.tensor:
-        # 1. Compute similarity between nodes.
-        A = torch.mm(node_embeddings, node_embeddings.transpose(1, 0))
-        # 2. Make sure only positive values can occur.
-        A = torch.nn.functional.relu(A)
-        # 3. Sample top-k neighbors.
-        values, indices = A.topk(k=self.neighbor_nb+1, dim=1)
+    def graph_matrix_learning(self) -> torch.tensor:
+        A = torch.nn.functional.relu(self.matrix)
+        A = self.matrix # if not used with topk, use that instead .exp()
+        dim=0
+        values, indices = A.topk(k=self.neighbor_nb+1, dim=dim)
         mask = torch.zeros_like(A)
-        mask.scatter_(1, indices, values.fill_(1))
+        mask.scatter_(dim, indices, values.fill_(1))
+        return A*mask
+    
+    def graph_emb_learning(self) -> torch.tensor:
+        nodevec1 = self.node_embeddings_start(self._idx)
+        nodevec2 = self.node_embeddings_target(self._idx)
+
+        nodevec1 = torch.tanh(self._alpha *self._linear1(nodevec1)) 
+        nodevec2 = torch.tanh(self._alpha *self._linear2(nodevec2))
+
+        A = torch.mm(nodevec1, nodevec2.transpose(1, 0)) - torch.mm(
+            nodevec2, nodevec1.transpose(1, 0)
+        )
+        # Topk on dim=1: A node can only have k sources 
+        # Topk on dim=0: A node can only have k targets 
+        dim=1 # FIXME: 1 or 0 ? 
+        values, indices = A.topk(k=self.neighbor_nb+1, dim=dim)
+        mask = torch.zeros_like(A)
+        mask.scatter_(dim, indices, values.fill_(1))
         return A*mask
 
-    def forward(self, X: torch.tensor):
-        # 1. Get adjacency matrix.
-        adj = self.graph_learning(self.node_embeddings.weight)
-        edge_index = adj.nonzero().t().contiguous()
-        # edge_index = torch.stack((torch.tensor(range(10)), torch.tensor([(i+1)%10 for i in range(10)])))
-        ic(edge_index)
-        # 2. Compute output.
+    def graph_learning(self) -> torch.tensor:
+        if self.gsl_mode == "matrix":
+            return self.graph_matrix_learning()
+        elif self.gsl_mode == "embedding":
+            return self.graph_emb_learning()
+        else:
+            raise ValueError('Unkown mode.')
+    
+    def simple_graph_mult(self, A, X):
+        y = torch.einsum("nwl,vw->nvl", (X, A))
+        y = y.squeeze(-1)
+        return y
+    
+    def gnn(self, A, X):
+        edge_index = A.nonzero().t().contiguous()
         y = self.graph_layer(X, edge_index).squeeze(-1) # TODO: directement utilier la matrice pour commencer
-        ic(y)
-        # y_tmp = torch.bmm(adj, X.squeeze(-1).T)
-        # y = self.linear(X.squeeze(-1))
+        return y
+    
+    def forward(self, X: torch.tensor):
+        A = self.graph_learning()
+        y = self.simple_graph_mult(A, X)
+        # y = self.linear(X)
         return y
     
     def training_step(self, batch, batch_idx):
         x, y = batch
-        y_hat = self(x)
-        print(y, y_hat)
+        y_hat = self(x) #.squeeze(-1)
         loss = torch.nn.functional.cross_entropy(y_hat, y)
+        # loss = torch.nn.functional.mse_loss(y_hat, y)
         return loss
     
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=1e-1)
+        optimizer = optim.Adam(self.parameters(), lr=1e-2)
+        # optimizer = torch.optim.SGD(self.parameters(), lr=0.0001)
         return optimizer
     
     def dummy_embeddings(self, n_nodes: int):
@@ -65,16 +101,16 @@ if __name__ == "__main__":
     import torch
     size=10
     dataset = EyeDataset(size=size)
-    train_loader = torch.utils.data.DataLoader(dataset)
-    trainer = Trainer(max_epochs=100)
-    model = DummyModel(embedding_size=8, node_nb=size, neighbor_nb=1, input_size=1)
+
+    train_loader = torch.utils.data.DataLoader(dataset, batch_size=1)
+    trainer = Trainer(max_epochs=500)
+    model = DummyModel(embedding_size=8, num_nodes=size, neighbor_nb=1, input_size=1, gsl_mode="matrix")
     trainer.fit(model, train_loader)
 
-    # X, y = dataset[0]
-    # ic(X)
-    # ic(y)
-    # y_hat = model.forward(X.unsqueeze(0))
-    # ic(y_hat)
-    # ic(torch.nn.functional.cross_entropy(y_hat, y.unsqueeze(0)))
+    for i in range(len(dataset)):
+        X,y = dataset[i]
+        X = X.unsqueeze(0)
+        y = y.unsqueeze(0)
+        ic(y, model(X))
 
-    # torch.tensor([1,1,3,1])
+    # Next step: More difficult data
