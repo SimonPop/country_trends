@@ -28,7 +28,7 @@ class MetroModel(pl.LightningModule):
     def graph_matrix_learning(self) -> torch.tensor:
         # A = torch.nn.functional.relu(self.matrix)
         A = self.matrix # if not used with topk, use that instead .exp()
-        return A.exp()
+        A = A.exp()
         dim=0
         values, indices = A.topk(k=self.neighbor_nb+1, dim=dim)
         mask = torch.zeros_like(A)

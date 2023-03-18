@@ -4,10 +4,8 @@ from metro_model import MetroModel
 from icecream import ic
 import torch
 
-cycle_1 = Cycle(nodes=[1,2,3,4], weight=0.2, cycle=False)
-# cycle_1 = Cycle([1,2,3,4], 0.2, False)
-# cycle_1 = Cycle([1,2,3,4], 0.2, False)
-# cycle_1 = Cycle([1,2,3,4], 0.2, False)
+cycle_1 = Cycle(nodes=list(range(5)), weight=0.2, cycle=True)
+# cycle_2 = Cycle([1,2,3,4], 0.2, False)
 
 dataset = MetroDataset([cycle_1])
 num_nodes = dataset.cg.num_stations()
@@ -26,6 +24,11 @@ for i in range(len(dataset)):
     # ic(y, model(X))
 
 ic(model.graph_matrix_learning())
+
+X,y = dataset[3]
+X = X.unsqueeze(0)
+y = y.unsqueeze(0)
+ic(X, y, model(X))
 
 
 # L'addition du nombre de personnes par quai à chaque station rend impossible la création d'un graphe exact puisque l'on ne connaît pas la proportion qui va partir d'un côté ou de l'autre seulement en regardant la somme totale, mais en regardant le nombre par quais.
