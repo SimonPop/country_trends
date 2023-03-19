@@ -1,7 +1,7 @@
 import networkx as nx
 import numpy as np
 import pandas as pd
-
+from collections import defaultdict
 class MetroGraph():
     def __init__(self):
         self.graph = nx.DiGraph()
@@ -81,3 +81,16 @@ class MetroGraph():
     
     def random_initialization(self, low, high):
         return np.random.randint(low, high, size=len(self.graph.nodes()))
+    
+    def contract(self, G):
+        node2station = nx.get_node_attributes(self.graph, "station")
+        station2nodes = defaultdict(list)
+        for n, s in node2station.items():
+            station2nodes[s].append(n)
+        for station in station2nodes.keys():
+            nodes = station2nodes[station]
+            base = nodes[0]
+            for node in nodes[1:]:
+                G = nx.contracted_nodes(G, base, node)
+        return G
+        
