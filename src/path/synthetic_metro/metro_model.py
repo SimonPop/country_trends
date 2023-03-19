@@ -5,7 +5,7 @@ import pytorch_lightning as pl
 from icecream import ic
 
 class MetroModel(pl.LightningModule):
-    def __init__(self, embedding_size: int, num_nodes: int, neighbor_nb: int, input_size: int, gsl_mode: str = "matrix"):
+    def __init__(self, embedding_size: int, num_nodes: int, neighbor_nb: int, input_size: int, gsl_mode: str = "matrix", matrix = None):
         super().__init__()
         self.neighbor_nb = neighbor_nb
         self.embedding_size = embedding_size
@@ -20,34 +20,46 @@ class MetroModel(pl.LightningModule):
         self._linear1 = nn.Linear(embedding_size, embedding_size)
         self._linear2 = nn.Linear(embedding_size, embedding_size)
 
-        self.matrix = nn.Parameter(torch.randn(num_nodes, num_nodes), requires_grad=True)
+        self.linear = nn.Linear(self.num_nodes, self.num_nodes, bias=False)
 
         self._alpha = 0.1
         self.softmax = nn.Softmax(dim=-1)
 
+        self.matrix_initialization(matrix)
+
+    def matrix_initialization(self, matrix):
+        if matrix is None:
+            self.matrix = nn.Parameter(torch.empty(self.num_nodes, self.num_nodes), requires_grad=True)
+            torch.nn.init.kaiming_uniform_(self.matrix, a=2.23)
+            #torch.nn.init.xavier_uniform(self.matrix.data)
+        else:
+            self.matrix = nn.Parameter(matrix, requires_grad=True)
+
     def graph_matrix_learning(self) -> torch.tensor:
-        # A = torch.nn.functional.relu(self.matrix)
         A = self.matrix # if not used with topk, use that instead .exp()
         A = A.exp()
+        # A = torch.nn.functional.relu(self.matrix)
         dim=0
         values, indices = A.topk(k=self.neighbor_nb+1, dim=dim)
         mask = torch.zeros_like(A)
         mask.scatter_(dim, indices, values.fill_(1))
         return A*mask
-    
+
     def graph_emb_learning(self) -> torch.tensor:
         nodevec1 = self.node_embeddings_start(self._idx)
         nodevec2 = self.node_embeddings_target(self._idx)
 
-        nodevec1 = torch.tanh(self._alpha *self._linear1(nodevec1)) 
+        nodevec1 = torch.tanh(self._alpha *self._linear1(nodevec1))
         nodevec2 = torch.tanh(self._alpha *self._linear2(nodevec2))
 
         A = torch.mm(nodevec1, nodevec2.transpose(1, 0)) - torch.mm(
             nodevec2, nodevec1.transpose(1, 0)
         )
-        # Topk on dim=1: A node can only have k sources 
-        # Topk on dim=0: A node can only have k targets 
-        dim=1 # FIXME: 1 or 0 ? 
+        A = torch.nn.functional.relu(A)
+        return A
+        # Topk on dim=1: A node can only have k sources
+        # Topk on dim=0: A node can only have k targets
+        dim=1 # FIXME: 1 or 0 ?
         values, indices = A.topk(k=self.neighbor_nb+1, dim=dim)
         mask = torch.zeros_like(A)
         mask.scatter_(dim, indices, values.fill_(1))
@@ -60,35 +72,38 @@ class MetroModel(pl.LightningModule):
             return self.graph_emb_learning()
         else:
             raise ValueError('Unkown mode.')
-    
+
     def simple_graph_mult(self, A, X):
         y = torch.einsum("nwl,vw->nvl", (X, A))
         y = y.squeeze(-1)
         return y
-    
+
     def gnn(self, A, X):
         edge_index = A.nonzero().t().contiguous()
         y = self.graph_layer(X, edge_index).squeeze(-1) # TODO: directement utilier la matrice pour commencer
         return y
-    
+
     def forward(self, X: torch.tensor):
-        A = self.graph_learning()
-        y = self.simple_graph_mult(A, X)
-        # y = self.linear(X)
+        A = self.matrix #self.graph_learning()
+        y = torch.nn.functional.linear(X.squeeze(-1), A, None)
+        # y = self.simple_graph_mult(A, X)
+        # y = self.linear(X.squeeze(-1))
         return y
-    
+
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x) #.squeeze(-1)
         # loss = torch.nn.functional.cross_entropy(y_hat, y)
         loss = torch.nn.functional.mse_loss(y_hat, y)
+        self.log("loss", loss)
         return loss
-    
+
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=1e-2)
+        optimizer = optim.Adam(self.parameters(), lr=1e-3)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
         # optimizer = torch.optim.SGD(self.parameters(), lr=0.0001)
-        return optimizer
-    
+        return {"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "loss"}
+
     def dummy_embeddings(self, n_nodes: int):
         sub = torch.cat((torch.eye(n_nodes-1), torch.zeros((n_nodes-1, 1))), dim=1)
         sub = torch.cat((torch.zeros((1, n_nodes)), sub), dim=0)

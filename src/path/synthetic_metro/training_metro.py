@@ -1,13 +1,13 @@
-from metro_dataset import MetroDataset, Cycle
+from metro_dataset import MetroDataset, Line
 from pytorch_lightning import Trainer
 from metro_model import MetroModel
 from icecream import ic
 import torch
 torch.manual_seed(0)
 
-cycle_1 = Cycle(nodes=[1,2,3,4,5], weight=0.2, cycle=True)
-cycle_2 = Cycle(nodes=[6,7,8], weight=0.2, cycle=True)
-cycle_3 = Cycle(nodes=[2,9,7], weight=0.2, cycle=True)
+cycle_1 = Line(nodes=[1,2,3,4,5], weight=0.2, cycle=True)
+cycle_2 = Line(nodes=[6,7,8], weight=0.2, cycle=True)
+cycle_3 = Line(nodes=[2,9,7], weight=0.2, cycle=True)
 
 dataset = MetroDataset([cycle_1, cycle_2])
 num_nodes = dataset.cg.num_stations()
