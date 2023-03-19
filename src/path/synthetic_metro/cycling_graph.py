@@ -1,7 +1,7 @@
 import networkx as nx
 import numpy as np
 import pandas as pd
-
+from collections import defaultdict
 class CyclingGraph():
     def __init__(self):
         self.graph = nx.DiGraph()
@@ -20,8 +20,8 @@ class CyclingGraph():
         for station, node in zip(cycle_stations, nodes):
             self.node2station[node] = station
 
-        for station in nodes:
-            self.node2line[station] = self.n_lines
+        for node in nodes:
+            self.node2line[node] = self.n_lines
 
         if cycle:
             base_nodes = nodes
@@ -39,8 +39,17 @@ class CyclingGraph():
         self.n_lines += 1
 
     def merge_graph(self):
-        pass
-
+        station2line = defaultdict(list)
+        G = self.graph.copy()
+        for k, v in self.node2station.items():
+            station2line[v].append(k)
+        for station, values in station2line.items():
+            base = values[0]
+            for node in values[1:]:
+                G = nx.contracted_nodes(G, base, node)
+        G = nx.relabel_nodes(G, self.node2station)
+        return G
+    
     def adjacency_matrix(self):
         A = nx.adjacency_matrix(self.graph, weight='weight').T
         return A.todense()
@@ -68,6 +77,10 @@ class CyclingGraph():
             station = self.node2station[x]
             merged_X[station] = merged_X[station] + X[:,x]
         return merged_X
+    
+    def stack_X(self, X):
+        stations = set(self.node2station.values())
+        merged_X = {station: np.zeros((X.shape[0], 2)) for station in stations}
     
     def random_initialization(self, low, high):
         return np.random.randint(low, high, size=len(self.graph.nodes()))
