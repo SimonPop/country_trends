@@ -2,6 +2,11 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 from collections import defaultdict
+import matplotlib.pyplot as plt
+from shapely.geometry import LineString
+import momepy
+import altair as alt
+
 class MetroGraph():
     def __init__(self):
         self.graph = nx.DiGraph()
@@ -38,10 +43,10 @@ class MetroGraph():
             node_id_neg = offset + 1 
             self.graph.add_node(node_id_neg, station=station, side=-1, line=self.n_lines)
             # Add link between stations and inter-station
-            self.graph.add_edge(interstation, node_id_neg, weight=interweight)
-            self.graph.add_edge(interstation, node_id_pos, weight=interweight)
-            self.graph.add_edge(node_id_pos, interstation, weight=interweight)
-            self.graph.add_edge(node_id_neg, interstation, weight=interweight)
+            self.graph.add_edge(interstation, node_id_neg, weight=interweight, line=self.n_lines)
+            self.graph.add_edge(interstation, node_id_pos, weight=interweight, line=self.n_lines)
+            self.graph.add_edge(node_id_pos, interstation, weight=interweight, line=self.n_lines)
+            self.graph.add_edge(node_id_neg, interstation, weight=interweight, line=self.n_lines)
             # Add to cycle
             way_in.append(node_id_pos)
             way_back.insert(0, node_id_neg)
@@ -50,8 +55,8 @@ class MetroGraph():
         rolled_order = np.roll(station_order, -1)
 
         for a, b in zip(station_order, rolled_order):
-            self.graph.add_edge(a, b, weight=weight)
-            self.graph.add_edge(a, a, weight=1-weight-interweight)
+            self.graph.add_edge(a, b, weight=weight, line=self.n_lines)
+            self.graph.add_edge(a, a, weight=1-weight-interweight, line=self.n_lines)
 
         self.n_lines += 1
 
@@ -93,4 +98,55 @@ class MetroGraph():
             for node in nodes[1:]:
                 G = nx.contracted_nodes(G, base, node)
         return G
-        
+    
+    def visualize(self, G, ncolumns: int):
+        G = self.contract(G)
+        G.remove_edges_from(nx.selfloop_edges(G))
+        G = nx.Graph(G)
+        selfG = self.contract(self.graph)
+        def get_pos(x: int):
+            return (x%ncolumns, x//ncolumns)
+        cmap = plt.get_cmap('tab20c')
+        edge_color_dict = {(a,b): cmap(x['line']) for a, b, x in selfG.edges(data=True)}
+        edge_colors = [edge_color_dict[(a,b)] if (a,b) in edge_color_dict else cmap(0) for a, b in G.edges()]
+        weight=nx.get_edge_attributes(G,'weight')
+        weight=[float(x) for x in weight.values()]
+        pos = {node: get_pos(x['station']) for node, x in selfG.nodes(data=True)}
+        labels = nx.get_node_attributes(selfG, "station")
+        nx.draw(G, pos, labels=labels, with_labels=True, edge_color=edge_colors, width=weight)
+
+    def altair_graph(self, G, ncolumns):
+        G = self.contract(G)
+        G.remove_edges_from(nx.selfloop_edges(G))
+        G = nx.Graph(G)
+        selfG = self.contract(self.graph)
+        def get_pos(x: int):
+            return (x%ncolumns, x//ncolumns)
+        cmap = plt.get_cmap('tab20c')
+        edge_color_dict = {(a,b): cmap(x['line']) for a, b, x in selfG.edges(data=True)}
+        edge_colors = [edge_color_dict[(a,b)] if (a,b) in edge_color_dict else cmap(0) for a, b in G.edges()]
+        weight=nx.get_edge_attributes(G,'weight')
+        weight=[float(x) for x in weight.values()]
+        pos = {node: get_pos(x['station']) for node, x in selfG.nodes(data=True)}
+        labels = nx.get_node_attributes(selfG, "station")
+        edge_geometry = {(a,b): LineString([pos[a], pos[b]]) for a,b in G.edges}
+        nx.set_edge_attributes(G, edge_geometry, "geometry")
+        G = nx.relabel_nodes(G, pos)
+        node_gdf, edge_gdf = momepy.nx_to_gdf(G)
+
+        lines = alt.Chart(edge_gdf).mark_geoshape(
+            filled=False,
+            strokeWidth=10
+        ).encode(
+            alt.Color(
+                'line:N',
+                # scale=line_scale
+            )
+        )
+
+        dots = alt.Chart(node_gdf).mark_geoshape(
+            filled=False,
+            strokeWidth=10
+        )
+
+        return lines + dots
