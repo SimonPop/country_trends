@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from shapely.geometry import LineString
 import momepy
 import altair as alt
+from config import Line
 
 class MetroGraph():
     def __init__(self):
@@ -21,12 +22,14 @@ class MetroGraph():
                 self.interstations[station] = offset
                 self.graph.add_node(node_id, station=station, side=0, line=0)
 
-    def add_line(self, stations, weight: float):
+    def add_line(self, line: Line):
         """
         Creates an independant line in the disconnected graph.
         Saves the information to join the graph afterwards.
         """
         interweight = 0.1
+        weight = line.weight
+        stations = line.nodes
 
         self.create_interstations(stations)
 
@@ -122,19 +125,22 @@ class MetroGraph():
         selfG = self.contract(self.graph)
         def get_pos(x: int):
             return (x%ncolumns, x//ncolumns)
-        cmap = plt.get_cmap('tab20c')
-        edge_color_dict = {(a,b): cmap(x['line']) for a, b, x in selfG.edges(data=True)}
-        edge_colors = [edge_color_dict[(a,b)] if (a,b) in edge_color_dict else cmap(0) for a, b in G.edges()]
+        # cmap = plt.get_cmap('tab20c')
+        # edge_color_dict = {(a,b): cmap(x['line']) for a, b, x in selfG.edges(data=True)}
+        # edge_colors = [edge_color_dict[(a,b)] if (a,b) in edge_color_dict else cmap(0) for a, b in G.edges()]
         weight=nx.get_edge_attributes(G,'weight')
         weight=[float(x) for x in weight.values()]
         pos = {node: get_pos(x['station']) for node, x in selfG.nodes(data=True)}
         labels = nx.get_node_attributes(selfG, "station")
+        lines = {(a,b): x['line'] for a, b, x in selfG.edges(data=True)}
+        lines = {(a,b): (lines[(a,b)] if (a,b) in lines else 0) for a, b in G.edges()}
         edge_geometry = {(a,b): LineString([pos[a], pos[b]]) for a,b in G.edges}
         nx.set_edge_attributes(G, edge_geometry, "geometry")
+        nx.set_edge_attributes(G, lines, "line")
         G = nx.relabel_nodes(G, pos)
         node_gdf, edge_gdf = momepy.nx_to_gdf(G)
 
-        lines = alt.Chart(edge_gdf).mark_geoshape(
+        lines = alt.Chart(edge_gdf[['weight', 'geometry', 'line']]).mark_geoshape(
             filled=False,
             strokeWidth=10
         ).encode(

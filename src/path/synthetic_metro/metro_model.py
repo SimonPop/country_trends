@@ -7,6 +7,7 @@ from icecream import ic
 class MetroModel(pl.LightningModule):
     def __init__(self, embedding_size: int, num_nodes: int, neighbor_nb: int, input_size: int, gsl_mode: str = "matrix", matrix = None):
         super().__init__()
+        self.save_hyperparameters()
         self.neighbor_nb = neighbor_nb
         self.embedding_size = embedding_size
         self.num_nodes = num_nodes
@@ -99,7 +100,7 @@ class MetroModel(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = optim.Adam(self.parameters(), lr=1e-4)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
         # optimizer = torch.optim.SGD(self.parameters(), lr=0.0001)
         return {"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "loss"}

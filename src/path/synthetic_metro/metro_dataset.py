@@ -1,14 +1,8 @@
-from cycling_graph import CyclingGraph
 from metro_graph import MetroGraph
 import torch
 from typing import List
-from pydantic import BaseModel
 import pandas as pd
-
-class Line(BaseModel):
-    nodes: List[int] = [1,2,3,4] 
-    weight: float = .2
-    is_cycle: bool = False
+from config import Line
 
 class MetroDataset(torch.utils.data.Dataset):
     def __init__(self, lines: List[Line], high: int = 100, n_steps: int = 100, init_nb: int = 5):
@@ -24,7 +18,7 @@ class MetroDataset(torch.utils.data.Dataset):
 
     def init_graph(self, lines: List[Line]):
         for line in lines:
-            self.cg.add_line(line.nodes, line.weight)
+            self.cg.add_line(line)
 
     def init_steps(self):
         init_vector = self.cg.random_initialization(0, self.high)
