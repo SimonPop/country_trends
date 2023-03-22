@@ -132,7 +132,11 @@ class MetroGraph():
         weight=[float(x) for x in weight.values()]
         pos = {node: get_pos(x['station']) for node, x in selfG.nodes(data=True)}
         labels = nx.get_node_attributes(selfG, "station")
-        lines = {(a,b): x['line'] for a, b, x in selfG.edges(data=True)}
+        lines = {
+            **{(a,b): x['line'] for a, b, x in selfG.edges(data=True)},
+            **{(b,a): x['line'] for a, b, x in selfG.edges(data=True)}
+        }
+
         lines = {(a,b): (lines[(a,b)] if (a,b) in lines else 0) for a, b in G.edges()}
         edge_geometry = {(a,b): LineString([pos[a], pos[b]]) for a,b in G.edges}
         nx.set_edge_attributes(G, edge_geometry, "geometry")
@@ -142,12 +146,13 @@ class MetroGraph():
 
         lines = alt.Chart(edge_gdf[['weight', 'geometry', 'line']]).mark_geoshape(
             filled=False,
-            strokeWidth=10
+            # strokeWidth='weight:Q'
         ).encode(
             alt.Color(
                 'line:N',
                 # scale=line_scale
-            )
+            ),
+            size=alt.Size('weight')
         )
 
         dots = alt.Chart(node_gdf).mark_geoshape(
