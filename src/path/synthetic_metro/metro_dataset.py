@@ -5,7 +5,16 @@ import pandas as pd
 from config import Line
 
 class MetroDataset(torch.utils.data.Dataset):
-    def __init__(self, lines: List[Line], high: int = 100, n_steps: int = 100, init_nb: int = 5):
+    def __init__(self, 
+                 lines: List[Line], 
+                 high: int = 100, 
+                 n_steps: int = 100, 
+                 init_nb: int = 5,
+                 multiplicative_noise = None,
+                 additive_noise = None,
+                ):
+        self.multiplicative_noise = multiplicative_noise
+        self.additive_noise = additive_noise
         self.high = high
         self.n_steps = n_steps
         self.init_nb = init_nb
@@ -23,7 +32,7 @@ class MetroDataset(torch.utils.data.Dataset):
     def init_steps(self):
         init_vector = self.cg.random_initialization(0, self.high)
         X = self.cg.simulate(
-            init_vector, self.n_steps
+            init_vector, self.n_steps, self.multiplicative_noise, self.additive_noise
         )
         X = pd.DataFrame(X)
         return X

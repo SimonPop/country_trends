@@ -68,13 +68,18 @@ class MetroGraph():
         A = A / A.sum(axis=1)
         return A # .todense()
 
-    def simulate(self, init_vector, step_nb: int):
+    def simulate(self, init_vector, step_nb: int, multiplicative_noise: float = None, additive_noise: float = None):
         """Simulates the steps of flow in the graph when initialized with a given vector."""
         A = self.adjacency_matrix()
         x = init_vector
         X = [x]
         for _ in range(step_nb-1):
-            x = A@x
+            B = A
+            if not multiplicative_noise is None:
+                B = B * (1+(np.random.rand(len(A))-.5)*multiplicative_noise)
+            if not additive_noise is None:
+                B = B + (np.random.rand(len(A))-.5)*additive_noise
+            x = B@x
             X.append(
                 x
             )
