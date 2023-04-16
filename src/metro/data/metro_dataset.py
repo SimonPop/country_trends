@@ -1,4 +1,4 @@
-from metro_graph import MetroGraph
+from .metro_graph import MetroGraph
 import torch
 from typing import List
 import pandas as pd

@@ -96,7 +96,7 @@ class DummyModel(pl.LightningModule):
     
 
 if __name__ == "__main__":
-    from eye_dataset import EyeDataset
+    from ..data.eye_dataset import EyeDataset
     from pytorch_lightning import Trainer
     import torch
     size=10
@@ -112,5 +112,3 @@ if __name__ == "__main__":
         X = X.unsqueeze(0)
         y = y.unsqueeze(0)
         ic(y, model(X))
-
-    # Next step: More difficult data
