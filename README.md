@@ -21,10 +21,13 @@ The data for this task has been generated to allow more freedom and clarity on t
 A Markov model framework has been used to generate the data using a pre-defined graph structure: 
 
 1. Define a graph structure: create edges & nodes, and normalize edge out-weights to sum to 1 (including self edges).
+
+![Metro Lines](imgs/metro_lines.png)
+
 2. Define an initial state: the number of people at each station.
 3. For *n* iterations simulate the Markov process: For each node, redistribute the population to other nodes according to weights.
 
-![Population at stations]()
+![Population at stations](imgs/synthetic_metro_traffic.png)
 
 ## 🐋 Whale search trends
 
