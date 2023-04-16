@@ -2,3 +2,4 @@
 **.csv
 .conda
 artifacts/**
+**/lightning_logs
