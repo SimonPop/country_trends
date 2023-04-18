@@ -34,14 +34,15 @@ class MetroModel(pl.LightningModule):
         if matrix is None:
             self.matrix = nn.Parameter(torch.empty(self.num_nodes, self.num_nodes), requires_grad=True)
             torch.nn.init.kaiming_uniform_(self.matrix, a=2.23)
-            #torch.nn.init.xavier_uniform(self.matrix.data)
+            # torch.nn.init.xavier_uniform(self.matrix.data)
         else:
             self.matrix = nn.Parameter(matrix, requires_grad=True)
 
     def graph_matrix_learning(self) -> torch.tensor:
         A = self.matrix # if not used with topk, use that instead .exp()
         # A = A.exp()
-        # A = torch.nn.functional.relu(self.matrix)
+        A = torch.nn.functional.relu(self.matrix)
+        return A
         dim=0
         values, indices = A.topk(k=self.neighbor_nb+1, dim=dim)
         mask = torch.zeros_like(A)
