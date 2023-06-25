@@ -1,4 +1,4 @@
-# Graph Structure Learning Experiments
+<h1 align="center">Graph Structure Learning Experiments</h1>
 
 Toy project for evaluating the applicability of Graph Structure Learning on different tasks:
 
@@ -65,13 +65,13 @@ For our learning objective, we will add some more processing:
 
 ### 🤖 The Model
 
-Model in use is the [MTGNN](https://pytorch-geometric-temporal.readthedocs.io/en/latest/modules/root.html#torch_geometric_temporal.nn.attention.mtgnn.MTGNN) as implemented in the [PyTorch Geometric Temporal](https://pytorch-geometric-temporal.readthedocs.io/en/latest/index.html) library.
+The model in use is the [MTGNN](https://pytorch-geometric-temporal.readthedocs.io/en/latest/modules/root.html#torch_geometric_temporal.nn.attention.mtgnn.MTGNN) as implemented in the [PyTorch Geometric Temporal](https://pytorch-geometric-temporal.readthedocs.io/en/latest/index.html) library.
 
 PyTorch Geometric Temporal is *"a temporal graph neural network extension library for PyTorch Geometric."*. It provides direct access to this model, from its catalog.
 
 #### Hyperparameters
 
-One of the biggest challenge for us is overfitting. The model, by default, is quite large compared to our dataset. 
+One of the biggest challenges for us is overfitting. The model, by default, is quite large compared to our dataset. 
 
 We will therefore use different methods to try and regularize our model:
 - Adam optimizer with `weights decay` (L2 regularization)
@@ -97,10 +97,14 @@ To do that, we will simplify the context, and use the `h3` library to discretize
 
 #### Data Acquisition
 
-The data comes from the [Movebank](https://www.movebank.org/cms/webapp?gwt_fragment=page=search_map) data base.
+The data comes from the [Movebank](https://www.movebank.org/cms/webapp?gwt_fragment=page=search_map) database.
 
 > *Movebank is a free, online database of animal tracking data hosted by the Max Planck Institute of Animal Behavior.*
 
 ### 📊 Results
 
 [TODO]
+
+## Article
+
+These experiments helped me in writing this article on the practical use of GSL for [Metro Network Structure Learning](https://simonpop.github.io/metro-network-structure-learning.html).
